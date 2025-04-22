@@ -9,8 +9,17 @@ class Ship(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=position)
         self.speed = 5
         self.movement = pygame.Vector2(0, 0)
-        self.space_erase = False
+        self.layer_update = 3
+        self.prev_pos = []
+        for i in range(3):
+            self.prev_pos.append((self.rect.x, self.rect.y))
     def update(self, controller_connected, display_rect, joystick):
+        self.layer_update -= 1
+        if self.layer_update <= 0:
+            self.prev_pos.append((self.rect.x, self.rect.y))
+            if len(self.prev_pos) > 3:
+                self.prev_pos.pop(0)
+            self.layer_update = 3
         if not controller_connected:
             keys = pygame.key.get_pressed()
             if keys[pygame.K_a] and self.rect.x > display_rect.x + 100:
@@ -32,7 +41,11 @@ class Ship(pygame.sprite.Sprite):
 
         self.rect.move_ip(self.movement)
     def draw(self, screen):
-        screen.blit(self.image, self.rect)
+        screen.blit(self.image, (self.rect.x, self.rect.y))
+        pygame.draw.rect(screen, (255, 0, 255), (self.rect.x, self.rect.y, self.image.get_width(), self.image.get_height()), 1)
+        for i in range(2, 0, -1):
+            screen.blit(self.image, (self.prev_pos[i][0], self.prev_pos[i][1]))
+            pygame.draw.rect(screen, (255, 0, 0), (self.prev_pos[i][0], self.prev_pos[i][1], self.image.get_width(), self.image.get_height()), 1)
 
 class Star:
     def __init__(self, display_rect, static=False):
