@@ -24,6 +24,13 @@ def eventloop():
         if ev.type == pygame.JOYDEVICEREMOVED:
             controller_connected = False
 
+def draw_status(screen, player):
+    pygame.draw.rect(screen, (255, 0, 0), (20, 20, player.damage*2, 20))
+    pygame.draw.rect(screen, (255, 255, 255), (20, 20, 200, 20), 2)
+
+    pygame.draw.rect(screen, (255, 255, 0), (20, 50, player.fuel//5, 20))
+    pygame.draw.rect(screen, (255, 255, 255), (20, 50, 100, 20), 2)
+
 def draw(screen):
     screen.fill((0, 0, 0))
     for star in star_list:
@@ -59,3 +66,4 @@ def gameloop(screen):
         player.update(controller_connected, display_rect, joy)
         
         draw(screen)
+        draw_status(screen, player)
