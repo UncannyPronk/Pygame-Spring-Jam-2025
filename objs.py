@@ -1,12 +1,79 @@
 import pygame, random, math
 
 
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, position):
+        super().__init__()
+        self.hp = 100
+        self.image = pygame.Surface((200, 100))
+        self.image.fill((255, 255, 255))
+        self.rect = self.image.get_rect(center=position)
+        self.speed = 1
+        self.power = 1
+        self.movement = pygame.Vector2(0, 0)
+
+    def update(self, player):
+        if player.rect.centerx > self.rect.right:
+            self.movement.x += self.speed
+        elif player.rect.centerx < self.rect.x:
+            self.movement.x -= self.speed
+        else:
+            self.movement.x = 0
+        self.rect.move_ip(self.movement)
+
+    def draw(self, player, screen):
+        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+
+class FastEnemy(Enemy):
+    def __init__(self, position):
+        super().__init__(position)
+        self.speed = 3
+    
+    def laser(self, player):
+        pass
+
+class SlowEnemy(Enemy):
+    def __init__(self, position):
+        super().__init__(position)
+        self.hp = 300
+    
+    def missile(self, player, screen):
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 2)
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
+
+    def update(self, player):
+        if player.rect.centerx > self.rect.right:
+            self.movement.x += self.speed
+        elif player.rect.centerx < self.rect.x:
+            self.movement.x -= self.speed
+        else:
+            self.movement.x = 0
+        self.rect.move_ip(self.movement)
+    
+    def draw(self, player, screen):
+        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        if player.rect.x < self.rect.centerx < player.rect.right:
+            self.missile(player, screen)
+            player.hp -= 1
+
+class MiniBoss(Enemy):
+    def __init__(self, position):
+        super().__init__(position)
+        self.hp = 1000
+
+class Boss(Enemy):
+    def __init__(self, position):
+        super().__init__(position)
+        self.hp = 3000
+
 class Ship(pygame.sprite.Sprite):
     def __init__(self, image_path, position, display_rect):
         super().__init__()
         # self.image = pygame.image.load(image_path).convert_alpha()
 
-        self.hp = 100
+        self.hp = 500
         self.fuel = 500
         self.spacial_used = False
         self.spacial_count = 500
@@ -18,7 +85,7 @@ class Ship(pygame.sprite.Sprite):
         self.image = pygame.Surface((200, 100))
         self.image.fill((255, 255, 255))
         self.rect = self.image.get_rect(center=position)
-        self.speed = 5
+        self.speed = 10
         self.movement = pygame.Vector2(0, 0)
         self.attackrect = pygame.Rect(self.rect.x + 80, self.rect.y - 200, 40, 20)
         self.laserbool = False
@@ -36,7 +103,7 @@ class Ship(pygame.sprite.Sprite):
         pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.y), (self.attackrect.right - 5, self.attackrect.centery), 4)
         pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.y), (self.attackrect.right - 5, self.attackrect.centery), 2)
       
-    def update(self, controller_connected, display_rect, joystick):
+    def update(self, controller_connected, display_rect, joystick, enemy_list):
         # self.layer_update -= 1
         # if self.layer_update <= 0:
         #     self.prev_pos.append((self.rect.x, self.rect.y))
@@ -103,7 +170,7 @@ class Ship(pygame.sprite.Sprite):
                 if keys[pygame.K_SPACE] and not self.spacial_used:
                     self.spacial_used = True
             else:
-                if self.rect.x > display_rect.x + 100 and round(joystick.get_axis(0)) < 0:
+                if self.rect.x > display_rect.x + 100 and int(joystick.get_axis(0)) < 0:
                     if joystick.get_axis(5) > 0 and self.fuel > 0:
                         self.movement.x = -self.speed * 4
                         self.fuel -= 1
@@ -117,12 +184,13 @@ class Ship(pygame.sprite.Sprite):
                         self.movement.x = self.speed
                 else:
                     self.movement.x = 0
-                if self.rect.y > display_rect.centery - 100 and round(joystick.get_axis(1)) < 0:
+                if self.rect.y > display_rect.centery - 100 and int(joystick.get_axis(1)) < 0:
                     if joystick.get_axis(5) > 0 and self.fuel > 0:
                         self.movement.y = -self.speed * 4
                         self.fuel -= 1
                     else:
                         self.movement.y = -self.speed
+                    print(round(joystick.get_axis(1)))
                 elif self.rect.bottom < display_rect.bottom - 100 and round(joystick.get_axis(1)) > 0:
                     if joystick.get_axis(5) > 0 and self.fuel > 0:
                         self.movement.y = self.speed * 4
@@ -132,8 +200,12 @@ class Ship(pygame.sprite.Sprite):
                 else:
                     self.movement.y = 0
                 
+                #attacks
                 if joystick.get_button(5) and not self.laserbool:
                     self.laserbool = True
+                    for enemy in enemy_list:
+                        if self.attackrect.colliderect(enemy):
+                            enemy.hp -= 1
                 else:
                     self.laserbool = False
                 
@@ -152,8 +224,16 @@ class Ship(pygame.sprite.Sprite):
                     # self.missiles[-1].image = pygame.transform.scale(self.missiles[-1].image, (50, 50))
                     # self.missiles[-1].rect = self.missiles[-1].image.get_rect(center=(self.rect.x + 20, self.rect.y))
                 
+                for missile in self.missiles:
+                    for enemy in enemy_list:
+                        if missile.rect.colliderect(enemy):
+                            enemy.hp -= 10
+                            break
+
                 if joystick.get_axis(4) > 0 and not self.spacial_used:
                     self.spacial_used = True
+                    for enemy in enemy_list:
+                        enemy.hp = 0
         else:
             self.movement.x, self.movement.y = 0, 0
 

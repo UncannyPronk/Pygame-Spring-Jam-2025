@@ -1,7 +1,7 @@
 import pygame, sys, random
 from pygame import *
 from pygame.locals import *
-from objs import Ship, Star
+from objs import Ship, Star, FastEnemy, SlowEnemy
 
 clock = pygame.time.Clock()
 fps = 60
@@ -25,13 +25,13 @@ def eventloop():
             controller_connected = False
 
 def draw_status(screen, player):
-    pygame.draw.rect(screen, (255, 0, 0), (20, 20, player.hp*2, 20))
-    pygame.draw.rect(screen, (255, 255, 255), (20, 20, 200, 20), 2)
+    pygame.draw.rect(screen, (255, 0, 0), (20, 20, player.hp, 20))
+    pygame.draw.rect(screen, (255, 255, 255), (20, 20, 500, 20), 2)
 
     pygame.draw.rect(screen, (255, 255, 0), (20, 50, player.fuel//5, 20))
     pygame.draw.rect(screen, (255, 255, 255), (20, 50, 100, 20), 2)
 
-def draw(screen, star_list):
+def draw(screen, star_list, enemy_list):
     screen.fill((0, 0, 6))
     for star in star_list:
         star.draw(screen)
@@ -51,6 +51,9 @@ def draw(screen, star_list):
             player.spacial_alpha -= 1
         player.spacial_surface.set_alpha(player.spacial_alpha)
         screen.blit(player.spacial_surface, (0, 0))
+
+    for enemy in enemy_list:
+        enemy.draw(player, screen)
 
     player.draw(screen)
     # return star_list
@@ -75,6 +78,7 @@ def gameloop(screen):
     display_rect = screen.get_rect()
     player = Ship("assets/ship.png", (display_rect.centerx, display_rect.bottom - 300), display_rect)
     star_list = []
+    enemy_list = [FastEnemy((100, 220)), SlowEnemy((400, 350))]
     for i in range(120):
         star_list.append(Star(display_rect, True))
     while running:
@@ -84,7 +88,14 @@ def gameloop(screen):
 
         stars()
         
-        player.update(controller_connected, display_rect, joy)
+        player.update(controller_connected, display_rect, joy, enemy_list)
+        for enemy in enemy_list:
+            enemy.update(player)
+            if enemy.hp <= 0:
+                enemy_list.remove(enemy)
         
-        draw(screen, star_list)
+        draw(screen, star_list, enemy_list)
         draw_status(screen, player)
+
+        if player.hp <= 0:
+            running = False
