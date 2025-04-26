@@ -2,13 +2,18 @@ import pygame, random, math
 
 
 class Ship(pygame.sprite.Sprite):
-    def __init__(self, image_path, position):
+    def __init__(self, image_path, position, display_rect):
         super().__init__()
         # self.image = pygame.image.load(image_path).convert_alpha()
 
-        self.damage = 0
+        self.hp = 100
         self.fuel = 500
         self.spacial_used = False
+        self.spacial_count = 500
+        self.spacial_color = 255
+        self.spacial_alpha = 255
+        self.spacial_radius = display_rect.width/2
+        self.spacial_surface = pygame.Surface((display_rect.w, display_rect.h))
 
         self.image = pygame.Surface((200, 100))
         self.image.fill((255, 255, 255))
@@ -30,6 +35,7 @@ class Ship(pygame.sprite.Sprite):
         pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.y), (self.attackrect.x + 5, self.attackrect.centery), 2)
         pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.y), (self.attackrect.right - 5, self.attackrect.centery), 4)
         pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.y), (self.attackrect.right - 5, self.attackrect.centery), 2)
+      
     def update(self, controller_connected, display_rect, joystick):
         # self.layer_update -= 1
         # if self.layer_update <= 0:
@@ -40,102 +46,121 @@ class Ship(pygame.sprite.Sprite):
 
         if self.missilecooldown > 0:
             self.missilecooldown -= 1
+        
+        if self.spacial_count > 0 and self.spacial_used:
+            self.spacial_count -= 1
 
-        if not controller_connected:
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_a] and self.rect.x > display_rect.x + 100:
-                if keys[pygame.K_LSHIFT] and self.fuel > 0:
-                    self.movement.x = -self.speed * 4
-                    self.fuel -= 1
+        if not (self.spacial_used and self.spacial_count > 0):
+            if not controller_connected:
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_a] and self.rect.x > display_rect.x + 100:
+                    if keys[pygame.K_LSHIFT] and self.fuel > 0:
+                        self.movement.x = -self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.x = -self.speed
+                elif keys[pygame.K_d] and self.rect.right < display_rect.right - 100:
+                    if keys[pygame.K_LSHIFT] and self.fuel > 0:
+                        self.movement.x = self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.x = self.speed
                 else:
-                    self.movement.x = -self.speed
-            elif keys[pygame.K_d] and self.rect.right < display_rect.right - 100:
-                if keys[pygame.K_LSHIFT] and self.fuel > 0:
-                    self.movement.x = self.speed * 4
-                    self.fuel -= 1
-                else:
-                    self.movement.x = self.speed
-            else:
-                self.movement.x = 0
+                    self.movement.x = 0
 
-            if keys[pygame.K_w] and self.rect.y > display_rect.centery - 100:
-                if keys[pygame.K_LSHIFT] and self.fuel > 0:
-                    self.movement.y = -self.speed * 4
-                    self.fuel -= 1
+                if keys[pygame.K_w] and self.rect.y > display_rect.centery - 100:
+                    if keys[pygame.K_LSHIFT] and self.fuel > 0:
+                        self.movement.y = -self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.y = -self.speed
+                elif keys[pygame.K_s] and self.rect.bottom < display_rect.bottom - 100:
+                    if keys[pygame.K_LSHIFT] and self.fuel > 0:
+                        self.movement.y = self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.y = self.speed
                 else:
-                    self.movement.y = -self.speed
-            elif keys[pygame.K_s] and self.rect.bottom < display_rect.bottom - 100:
-                if keys[pygame.K_LSHIFT] and self.fuel > 0:
-                    self.movement.y = self.speed * 4
-                    self.fuel -= 1
+                    self.movement.y = 0
+                
+                #change attack mode to mouse click later
+                if keys[pygame.K_e] and not self.laserbool:
+                    self.laserbool = True
                 else:
-                    self.movement.y = self.speed
-            else:
-                self.movement.y = 0
-            
-            #change attack mode to mouse click later
-            if keys[pygame.K_e] and not self.laserbool:
-                self.laserbool = True
-                self.fuel -= .2
-            else:
-                self.laserbool = False
+                    self.laserbool = False
+                
+                if keys[pygame.K_e] and self.fuel > 0:
+                    self.fuel -= .2
+                else:
+                    self.laserbool = False
 
-            if keys[pygame.K_q] and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
-                self.missilecooldown = 50
-                self.missilecount -= 1
-                missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), self.attackrect)
-                self.missiles.append(missile)
-                # self.missiles[-1].outer = self
-                # self.missiles[-1].image = pygame.image.load("missile.png").convert_alpha()
-                # self.missiles[-1].image = pygame.transform.scale(self.missiles[-1].image, (50, 50))
-                # self.missiles[-1].rect = self.missiles[-1].image.get_rect(center=(self.rect.x + 20, self.rect.y))
+                if keys[pygame.K_q] and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
+                    self.missilecooldown = 50
+                    self.missilecount -= 1
+                    missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), self.attackrect)
+                    self.missiles.append(missile)
+
+                if keys[pygame.K_SPACE] and not self.spacial_used:
+                    self.spacial_used = True
+            else:
+                if self.rect.x > display_rect.x + 100 and round(joystick.get_axis(0)) < 0:
+                    if joystick.get_axis(5) > 0 and self.fuel > 0:
+                        self.movement.x = -self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.x = -self.speed
+                elif self.rect.right < display_rect.right - 100 and round(joystick.get_axis(0)) > 0:
+                    if joystick.get_axis(5) > 0 and self.fuel > 0:
+                        self.movement.x = self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.x = self.speed
+                else:
+                    self.movement.x = 0
+                if self.rect.y > display_rect.centery - 100 and round(joystick.get_axis(1)) < 0:
+                    if joystick.get_axis(5) > 0 and self.fuel > 0:
+                        self.movement.y = -self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.y = -self.speed
+                elif self.rect.bottom < display_rect.bottom - 100 and round(joystick.get_axis(1)) > 0:
+                    if joystick.get_axis(5) > 0 and self.fuel > 0:
+                        self.movement.y = self.speed * 4
+                        self.fuel -= 1
+                    else:
+                        self.movement.y = self.speed
+                else:
+                    self.movement.y = 0
+                
+                if joystick.get_button(5) and not self.laserbool:
+                    self.laserbool = True
+                else:
+                    self.laserbool = False
+                
+                if joystick.get_button(5) and self.fuel > 0:
+                    self.fuel -= .2
+                else:
+                    self.laserbool = False
+
+                if joystick.get_button(4) and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
+                    self.missilecooldown = 50
+                    self.missilecount -= 1
+                    missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), self.attackrect)
+                    self.missiles.append(missile)
+                    # self.missiles[-1].outer = self
+                    # self.missiles[-1].image = pygame.image.load("missile.png").convert_alpha()
+                    # self.missiles[-1].image = pygame.transform.scale(self.missiles[-1].image, (50, 50))
+                    # self.missiles[-1].rect = self.missiles[-1].image.get_rect(center=(self.rect.x + 20, self.rect.y))
+                
+                if joystick.get_axis(4) > 0 and not self.spacial_used:
+                    self.spacial_used = True
         else:
-            if self.rect.x > display_rect.x + 100 and round(joystick.get_axis(0)) < 0:
-                if joystick.get_axis(5) > 0 and self.fuel > 0:
-                    self.movement.x = -self.speed * 4
-                    self.fuel -= 1
-                else:
-                    self.movement.x = -self.speed
-            elif self.rect.right < display_rect.right - 100 and round(joystick.get_axis(0)) > 0:
-                if joystick.get_axis(5) > 0 and self.fuel > 0:
-                    self.movement.x = self.speed * 4
-                    self.fuel -= 1
-                else:
-                    self.movement.x = self.speed
-            else:
-                self.movement.x = 0
-            if self.rect.y > display_rect.centery - 100 and round(joystick.get_axis(1)) < 0:
-                if joystick.get_axis(5) > 0 and self.fuel > 0:
-                    self.movement.y = -self.speed * 4
-                    self.fuel -= 1
-                else:
-                    self.movement.y = -self.speed
-            elif self.rect.bottom < display_rect.bottom - 100 and round(joystick.get_axis(1)) > 0:
-                if joystick.get_axis(5) > 0 and self.fuel > 0:
-                    self.movement.y = self.speed * 4
-                    self.fuel -= 1
-                else:
-                    self.movement.y = self.speed
-            else:
-                self.movement.y = 0
-            
-            if joystick.get_button(5) and not self.laserbool:
-                self.laserbool = True
-            else:
-                self.laserbool = False
-
-            if joystick.get_button(4) and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
-                self.missilecooldown = 50
-                self.missilecount -= 1
-                missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), self.attackrect)
-                self.missiles.append(missile)
-                # self.missiles[-1].outer = self
-                # self.missiles[-1].image = pygame.image.load("missile.png").convert_alpha()
-                # self.missiles[-1].image = pygame.transform.scale(self.missiles[-1].image, (50, 50))
-                # self.missiles[-1].rect = self.missiles[-1].image.get_rect(center=(self.rect.x + 20, self.rect.y))
+            self.movement.x, self.movement.y = 0, 0
 
         self.rect.move_ip(self.movement)
-        self.attackrect.move_ip(self.movement.x/2, self.movement.y/2)
+        # self.attackrect.move_ip(self.movement.x/2, self.movement.y/2)
+        self.attackrect.centerx = display_rect.centerx + (self.rect.centerx - display_rect.centerx)/2
+        self.attackrect.centery = display_rect.centery - 200 + (self.rect.centery - display_rect.centery)/2
 
     def draw(self, screen):
         screen.blit(self.image, (self.rect.x, self.rect.y))
@@ -157,8 +182,8 @@ class Ship(pygame.sprite.Sprite):
             self.image = pygame.Surface((50, 50))
             self.image.fill((255, 0, 0))
             self.rect = self.image.get_rect(center=position)
-            self.speed = 10
-            self.target = attackrect.center
+            self.speed = 4
+            self.target = attackrect.topleft
 
         def update(self, missiles):
             dx = self.target[0] - self.rect.x
@@ -180,30 +205,47 @@ class Ship(pygame.sprite.Sprite):
 class Star:
     def __init__(self, display_rect, static=False):
         self.color = (0, 0, 0)
-        self.size = 2
+        self.size = 1
         self.static = static
         if not static:
             self.pos = pygame.Vector2(random.randint(display_rect.centerx - 50, display_rect.centerx + 50), random.randint(display_rect.centery - 50, display_rect.centery + 50))
+
             self.movement = [random.randint(0, 8)]
             self.movement.append(8 - self.movement[0])
             if self.pos.x < display_rect.centerx - 10:
                 self.movement[0] = -self.movement[0]
+            self.pos.x += self.movement[0] * 60
+
             if self.pos.y < display_rect.centery - 10:
                 self.movement[1] = -self.movement[1]
+            self.pos.y += self.movement[1] * 60
         else:
-            self.size = 1
             self.pos = pygame.Vector2(random.randint(display_rect.x, display_rect.right), random.randint(display_rect.y, display_rect.bottom))
                 
-    def update(self, display_rect):
+    def update(self, display_rect, player):
         if not self.static:
-            dist = int(math.sqrt((self.pos.x - display_rect.centerx)**2 + (self.pos.y - display_rect.centery)**2)) // 2
+            dist = int(math.sqrt((self.pos.x - (display_rect.centerx + self.movement[0]*60))**2 + (self.pos.y - (display_rect.centery + self.movement[1]*60))**2))
             if dist > 255:
                 dist = 255
-        else:
-            dist = random.randint(10, 255)
-        self.color = (dist, dist, dist)
-        if not self.static:
+            if dist > 200:
+                self.size = 2
+            self.color = (dist, dist, dist)
             self.pos.x += self.movement[0]
             self.pos.y += self.movement[1]
+        else:
+            dist = int(math.sqrt((self.pos.x - display_rect.centerx)**2 + (self.pos.y - display_rect.centery)**2)) // 3
+            rand = random.randint(30, 255)
+            if player.spacial_used:
+                if player.spacial_count > 0:
+                    color = rand
+                else:
+                    color = rand - dist + player.spacial_alpha
+            else:
+                color = rand - dist
+            if color < 0:
+                color = 0
+            if color > 255:
+                color = 255
+            self.color = (color, color, color)
     def draw(self, screen):
-        pygame.draw.circle(screen, self.color, self.pos, int(self.size))
+        pygame.draw.circle(screen, self.color, self.pos, self.size)
