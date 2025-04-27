@@ -6,7 +6,7 @@ from objs import Ship, Star, FastEnemy, SlowEnemy
 clock = pygame.time.Clock()
 fps = 60
 controller_connected = False
-joy = None
+joy : pygame.joystick.JoystickType | None = None
 
 def eventloop():
     global controller_connected, joy
