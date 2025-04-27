@@ -2,6 +2,7 @@ import pygame, sys, random
 from pygame import *
 from pygame.locals import *
 from objs import Ship, Star, FastEnemy, SlowEnemy
+from dialogue_system import speak
 
 clock = pygame.time.Clock()
 fps = 60
@@ -24,12 +25,26 @@ def eventloop():
         if ev.type == pygame.JOYDEVICEREMOVED:
             controller_connected = False
 
-def draw_status(screen, player):
+def draw_status(screen, player, i=0):
     pygame.draw.rect(screen, (255, 0, 0), (20, 20, player.hp, 20))
     pygame.draw.rect(screen, (255, 255, 255), (20, 20, 500, 20), 2)
 
     pygame.draw.rect(screen, (255, 255, 0), (20, 50, player.fuel//5, 20))
     pygame.draw.rect(screen, (255, 255, 255), (20, 50, 100, 20), 2)
+
+    # dialogue_list = ["Hello There", "How are you doing?", "Testing", "Tested!"]
+    # while i < len(dialogue_list):
+    #     pygame.display.flip()
+    #     screen.fill((0, 0, 0))
+    #     speak(screen, display_rect, "C:/Users/janar/OneDrive/Pictures/Screenshots/Screenshot 2025-03-08 213325.png", "C:/Users/janar/OneDrive/Pictures/hd-miyamoto-musashi-wallpaper-whatspaper.jpg", "C:/Users/janar/OneDrive/Pictures/hanuman.jpg", i, dialogue_list)
+    #     for ev in pygame.event.get():
+    #         if ev.type == QUIT:
+    #             pygame.quit()
+    #         if ev.type == KEYDOWN:
+    #             if ev.key == K_a:
+    #                 i += 1
+    #             if ev.key == K_ESCAPE:
+    #                 pygame.quit()
 
 def draw(screen, star_list, enemy_list):
     screen.fill((0, 0, 6))

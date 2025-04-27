@@ -29,20 +29,27 @@ class FastEnemy(Enemy):
         super().__init__(position)
         self.speed = 3
     
-    def laser(self, player):
-        pass
+    def laser(self, player, screen):
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 2)
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
+    
+    def draw(self, player, screen):
+        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        if player.rect.x < self.rect.centerx < player.rect.right:
+            self.laser(player, screen)
+            player.hp -= 1
+
 
 class SlowEnemy(Enemy):
     def __init__(self, position):
         super().__init__(position)
         self.hp = 300
+        self.missiles = []
+        self.missilecount = 5
+        self.missilecooldown = 0
     
-    def missile(self, player, screen):
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 2)
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
-
     def update(self, player):
         if player.rect.centerx > self.rect.right:
             self.movement.x += self.speed
@@ -51,22 +58,183 @@ class SlowEnemy(Enemy):
         else:
             self.movement.x = 0
         self.rect.move_ip(self.movement)
-    
+
+        if self.missilecooldown > 0:
+            self.missilecooldown -= 1
+        if self.missilecooldown == 0:
+            self.missilecooldown = 50
+            self.missilecount -= 1
+            missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), player.rect)
+            self.missiles.append(missile)
+        
     def draw(self, player, screen):
         pygame.draw.rect(screen, (255, 0, 0), self.rect)
-        if player.rect.x < self.rect.centerx < player.rect.right:
-            self.missile(player, screen)
-            player.hp -= 1
+        for missile in self.missiles:
+            missile.update(self.missiles, player)
+            missile.draw(screen)
+        
+    class Missile(pygame.sprite.Sprite):
+        def __init__(self, image_path, position, attackrect):
+            super().__init__()
+            # self.image = pygame.image.load(image_path).convert_alpha()
+            self.image = pygame.Surface((50, 50))
+            self.image.fill((255, 0, 0))
+            self.rect = self.image.get_rect(center=position)
+            self.speed = 4
+            self.target = attackrect.topleft
+
+        def update(self, missiles, player):
+            dx = player.rect.x - self.rect.x
+            dy = player.rect.y - self.rect.y
+            distance = (dx ** 2 + dy ** 2) ** 0.5
+            if distance == 0:
+                return
+            dx = (dx / distance) * self.speed
+            dy = self.speed
+            self.rect.x += dx
+            self.rect.y += dy
+            if self.rect.colliderect(pygame.Rect(player.rect.x, player.rect.y - 10, 40, 20)) or self.rect.bottom >= player.rect.y:
+                self.kill()
+                missiles.remove(self)
+        
+        def draw(self, screen):
+            screen.blit(self.image, (self.rect.x, self.rect.y))
+
 
 class MiniBoss(Enemy):
     def __init__(self, position):
         super().__init__(position)
         self.hp = 1000
+        self.speed = 5
+        self.missiles = []
+        self.missilecount = 5
+        self.missilecooldown = 0
+    
+    def laser(self, player, screen):
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 2)
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
+    
+    def update(self, player):
+        if player.rect.centerx > self.rect.right:
+            self.movement.x += self.speed
+        elif player.rect.centerx < self.rect.x:
+            self.movement.x -= self.speed
+        else:
+            self.movement.x = 0
+        self.rect.move_ip(self.movement)
+
+        if self.missilecooldown > 0:
+            self.missilecooldown -= 1
+        if self.missilecooldown == 0:
+            self.missilecooldown = 50
+            self.missilecount -= 1
+            missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), player.rect)
+            self.missiles.append(missile)
+        
+    def draw(self, player, screen):
+        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        for missile in self.missiles:
+            missile.update(self.missiles, player)
+            missile.draw(screen)
+        if player.rect.x < self.rect.centerx < player.rect.right:
+            self.laser(player, screen)
+            player.hp -= 1
+        
+    class Missile(pygame.sprite.Sprite):
+        def __init__(self, image_path, position, attackrect):
+            super().__init__()
+            # self.image = pygame.image.load(image_path).convert_alpha()
+            self.image = pygame.Surface((50, 50))
+            self.image.fill((255, 0, 0))
+            self.rect = self.image.get_rect(center=position)
+            self.speed = 4
+            self.target = attackrect.topleft
+
+        def update(self, missiles, player):
+            dx = player.rect.x - self.rect.x
+            dy = player.rect.y - self.rect.y
+            distance = (dx ** 2 + dy ** 2) ** 0.5
+            if distance == 0:
+                return
+            dx = (dx / distance) * self.speed
+            dy = self.speed
+            self.rect.x += dx
+            self.rect.y += dy
+            if self.rect.colliderect(pygame.Rect(player.rect.x, player.rect.y - 10, 40, 20)) or self.rect.bottom >= player.rect.y:
+                self.kill()
+                missiles.remove(self)
+        
+        def draw(self, screen):
+            screen.blit(self.image, (self.rect.x, self.rect.y))
 
 class Boss(Enemy):
     def __init__(self, position):
         super().__init__(position)
         self.hp = 3000
+        self.missiles = []
+        self.missilecount = 5
+        self.missilecooldown = 0
+    
+    def laser(self, player, screen):
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 2)
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
+    
+    def update(self, player):
+        if player.rect.centerx > self.rect.right:
+            self.movement.x += self.speed
+        elif player.rect.centerx < self.rect.x:
+            self.movement.x -= self.speed
+        else:
+            self.movement.x = 0
+        self.rect.move_ip(self.movement)
+
+        if self.missilecooldown > 0:
+            self.missilecooldown -= 1
+        if self.missilecooldown == 0:
+            self.missilecooldown = 50
+            self.missilecount -= 1
+            missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), player.rect)
+            self.missiles.append(missile)
+        
+    def draw(self, player, screen):
+        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        for missile in self.missiles:
+            missile.update(self.missiles, player)
+            missile.draw(screen)
+        if player.rect.x < self.rect.centerx < player.rect.right:
+            self.laser(player, screen)
+            player.hp -= 1
+        
+    class Missile(pygame.sprite.Sprite):
+        def __init__(self, image_path, position, attackrect):
+            super().__init__()
+            # self.image = pygame.image.load(image_path).convert_alpha()
+            self.image = pygame.Surface((50, 50))
+            self.image.fill((255, 0, 0))
+            self.rect = self.image.get_rect(center=position)
+            self.speed = 4
+            self.target = attackrect.topleft
+
+        def update(self, missiles, player):
+            dx = player.rect.x - self.rect.x
+            dy = player.rect.y - self.rect.y
+            distance = (dx ** 2 + dy ** 2) ** 0.5
+            if distance == 0:
+                return
+            dx = (dx / distance) * self.speed
+            dy = self.speed
+            self.rect.x += dx
+            self.rect.y += dy
+            if self.rect.colliderect(pygame.Rect(player.rect.x, player.rect.y - 10, 40, 20)) or self.rect.bottom >= player.rect.y:
+                self.kill()
+                missiles.remove(self)
+        
+        def draw(self, screen):
+            screen.blit(self.image, (self.rect.x, self.rect.y))
 
 class Ship(pygame.sprite.Sprite):
     def __init__(self, image_path, position, display_rect):
@@ -169,6 +337,8 @@ class Ship(pygame.sprite.Sprite):
 
                 if keys[pygame.K_SPACE] and not self.spacial_used:
                     self.spacial_used = True
+                    for enemy in enemy_list:
+                        enemy.hp = 0
             else:
                 if self.rect.x > display_rect.x + 100 and int(joystick.get_axis(0)) < 0:
                     if joystick.get_axis(5) > 0 and self.fuel > 0:
