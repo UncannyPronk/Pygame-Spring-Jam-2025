@@ -1,6 +1,5 @@
 import pygame, random, math
 
-
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, position):
         super().__init__()

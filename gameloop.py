@@ -7,7 +7,7 @@ from dialogue_system import speak
 clock = pygame.time.Clock()
 fps = 60
 controller_connected = False
-joy = None
+joy : pygame.joystick.JoystickType | None = None
 
 def eventloop(player, display_rect):
     global controller_connected, joy
