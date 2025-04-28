@@ -9,7 +9,7 @@ fps = 60
 controller_connected = False
 joy = None
 
-def eventloop():
+def eventloop(player, display_rect):
     global controller_connected, joy
     for ev in pygame.event.get():
         if ev.type == QUIT:
@@ -22,6 +22,7 @@ def eventloop():
         if ev.type == pygame.JOYDEVICEADDED:
             controller_connected = True
             joy = pygame.joystick.Joystick(ev.device_index)
+            player.attackrect.center = display_rect.center
         if ev.type == pygame.JOYDEVICEREMOVED:
             controller_connected = False
 
@@ -97,7 +98,7 @@ def gameloop(screen):
     for i in range(120):
         star_list.append(Star(display_rect, True))
     while running:
-        eventloop()
+        eventloop(player, display_rect)
         clock.tick(fps)
         pygame.display.flip()
 

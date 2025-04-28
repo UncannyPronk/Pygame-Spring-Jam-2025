@@ -28,6 +28,7 @@ class FastEnemy(Enemy):
     def __init__(self, position):
         super().__init__(position)
         self.speed = 3
+        self.power = .2
     
     def laser(self, player, screen):
         pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
@@ -39,13 +40,14 @@ class FastEnemy(Enemy):
         pygame.draw.rect(screen, (255, 0, 0), self.rect)
         if player.rect.x < self.rect.centerx < player.rect.right:
             self.laser(player, screen)
-            player.hp -= 1
+            player.hp -= self.power
 
 
 class SlowEnemy(Enemy):
     def __init__(self, position):
         super().__init__(position)
         self.hp = 300
+        self.power = 10
         self.missiles = []
         self.missilecount = 5
         self.missilecooldown = 0
@@ -70,7 +72,7 @@ class SlowEnemy(Enemy):
     def draw(self, player, screen):
         pygame.draw.rect(screen, (255, 0, 0), self.rect)
         for missile in self.missiles:
-            missile.update(self.missiles, player)
+            missile.update(self.missiles, player, self.power)
             missile.draw(screen)
         
     class Missile(pygame.sprite.Sprite):
@@ -83,7 +85,7 @@ class SlowEnemy(Enemy):
             self.speed = 4
             self.target = attackrect.topleft
 
-        def update(self, missiles, player):
+        def update(self, missiles, player, power):
             dx = player.rect.x - self.rect.x
             dy = player.rect.y - self.rect.y
             distance = (dx ** 2 + dy ** 2) ** 0.5
@@ -94,6 +96,7 @@ class SlowEnemy(Enemy):
             self.rect.x += dx
             self.rect.y += dy
             if self.rect.colliderect(pygame.Rect(player.rect.x, player.rect.y - 10, 40, 20)) or self.rect.bottom >= player.rect.y:
+                player.hp -= power
                 self.kill()
                 missiles.remove(self)
         
@@ -303,7 +306,7 @@ class Ship(pygame.sprite.Sprite):
                 else:
                     self.movement.x = 0
 
-                if keys[pygame.K_w] and self.rect.y > display_rect.centery - 100:
+                if keys[pygame.K_w] and self.rect.y > display_rect.y + 100:
                     if keys[pygame.K_LSHIFT] and self.fuel > 0:
                         self.movement.y = -self.speed * 4
                         self.fuel -= 1
@@ -318,18 +321,17 @@ class Ship(pygame.sprite.Sprite):
                 else:
                     self.movement.y = 0
                 
-                #change attack mode to mouse click later
-                if keys[pygame.K_e] and not self.laserbool:
+                if pygame.mouse.get_pressed()[0] and not self.laserbool:
                     self.laserbool = True
                 else:
                     self.laserbool = False
                 
-                if keys[pygame.K_e] and self.fuel > 0:
+                if pygame.mouse.get_pressed()[0] and self.fuel > 0:
                     self.fuel -= .2
                 else:
                     self.laserbool = False
 
-                if keys[pygame.K_q] and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
+                if pygame.mouse.get_pressed()[2] and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
                     self.missilecooldown = 50
                     self.missilecount -= 1
                     missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), self.attackrect)
@@ -339,6 +341,8 @@ class Ship(pygame.sprite.Sprite):
                     self.spacial_used = True
                     for enemy in enemy_list:
                         enemy.hp = 0
+
+                self.attackrect.center = pygame.mouse.get_pos()
             else:
                 if self.rect.x > display_rect.x + 100 and int(joystick.get_axis(0)) < 0:
                     if joystick.get_axis(5) > 0 and self.fuel > 0:
@@ -354,13 +358,13 @@ class Ship(pygame.sprite.Sprite):
                         self.movement.x = self.speed
                 else:
                     self.movement.x = 0
-                if self.rect.y > display_rect.centery - 100 and int(joystick.get_axis(1)) < 0:
+                if self.rect.y > display_rect.y + 100 and int(joystick.get_axis(1)) < 0:
                     if joystick.get_axis(5) > 0 and self.fuel > 0:
                         self.movement.y = -self.speed * 4
                         self.fuel -= 1
                     else:
                         self.movement.y = -self.speed
-                    print(round(joystick.get_axis(1)))
+                    # print(round(joystick.get_axis(1)))
                 elif self.rect.bottom < display_rect.bottom - 100 and round(joystick.get_axis(1)) > 0:
                     if joystick.get_axis(5) > 0 and self.fuel > 0:
                         self.movement.y = self.speed * 4
@@ -404,13 +408,24 @@ class Ship(pygame.sprite.Sprite):
                     self.spacial_used = True
                     for enemy in enemy_list:
                         enemy.hp = 0
+                
+                if round(joystick.get_axis(2)) > 0:
+                    self.attackrect.x += 15
+                elif int(joystick.get_axis(2)) < 0:
+                    self.attackrect.x -= 15
+                if round(joystick.get_axis(3)) > 0:
+                    self.attackrect.y += 15
+                elif int(joystick.get_axis(3)) < 0:
+                    self.attackrect.y -= 15
+                
         else:
             self.movement.x, self.movement.y = 0, 0
 
         self.rect.move_ip(self.movement)
         # self.attackrect.move_ip(self.movement.x/2, self.movement.y/2)
-        self.attackrect.centerx = display_rect.centerx + (self.rect.centerx - display_rect.centerx)/2
-        self.attackrect.centery = display_rect.centery - 200 + (self.rect.centery - display_rect.centery)/2
+
+        # self.attackrect.centerx = display_rect.centerx + (self.rect.centerx - display_rect.centerx)/2
+        # self.attackrect.centery = display_rect.centery - 200 + (self.rect.centery - display_rect.centery)/2
 
     def draw(self, screen):
         screen.blit(self.image, (self.rect.x, self.rect.y))
