@@ -92,7 +92,7 @@ def gameloop(screen):
     running = True
     joysticks = {}
     display_rect = screen.get_rect()
-    player = Ship("assets/ship.png", (display_rect.centerx, display_rect.bottom - 300), display_rect)
+    player = Ship((display_rect.centerx, display_rect.bottom - 300), display_rect)
     star_list = []
     enemy_list = [FastEnemy((100, 220)), SlowEnemy((400, 350))]
     for i in range(120):

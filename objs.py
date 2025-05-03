@@ -239,9 +239,12 @@ class Boss(Enemy):
             screen.blit(self.image, (self.rect.x, self.rect.y))
 
 class Ship(pygame.sprite.Sprite):
-    def __init__(self, image_path, position, display_rect):
+    def __init__(self, position, display_rect):
         super().__init__()
-        # self.image = pygame.image.load(image_path).convert_alpha()
+        self.ship_normal = "assets/images/ship_normal.png"
+        self.ship_up = "assets/images/ship_up.png"
+        self.ship_down = "assets/images/ship_down.png"
+        self.image = pygame.image.load(self.ship_normal)
 
         self.hp = 500
         self.fuel = 500
@@ -252,8 +255,8 @@ class Ship(pygame.sprite.Sprite):
         self.spacial_radius = display_rect.width/2
         self.spacial_surface = pygame.Surface((display_rect.w, display_rect.h))
 
-        self.image = pygame.Surface((200, 100))
-        self.image.fill((255, 255, 255))
+        # self.image = pygame.Surface((200, 100))
+        # self.image.fill((255, 255, 255))
         self.rect = self.image.get_rect(center=position)
         self.speed = 10
         self.movement = pygame.Vector2(0, 0)
@@ -280,6 +283,20 @@ class Ship(pygame.sprite.Sprite):
         #     if len(self.prev_pos) > 3:
         #         self.prev_pos.pop(0)
         #     self.layer_update = 3
+        
+        if self.movement.y > 0:
+            self.image = pygame.image.load(self.ship_down)
+        elif self.movement.y < 0:
+            self.image = pygame.image.load(self.ship_up)
+        else:
+            self.image = pygame.image.load(self.ship_normal)
+        
+        if self.movement.x < 0:
+            self.image = pygame.transform.rotate(self.image, 45)
+        elif self.movement.x > 0:
+            self.image = pygame.transform.rotate(self.image, -45)
+        else:
+            self.image = pygame.transform.rotate(self.image, 0)
 
         if self.missilecooldown > 0:
             self.missilecooldown -= 1
