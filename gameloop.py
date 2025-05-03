@@ -97,6 +97,8 @@ def gameloop(screen):
     enemy_list = [FastEnemy((100, 220)), SlowEnemy((400, 350))]
     for i in range(120):
         star_list.append(Star(display_rect, True))
+    pygame.mixer.music.load("assets/audio/star_focus.mp3")
+    pygame.mixer.music.play(-1)
     while running:
         eventloop(player, display_rect)
         clock.tick(fps)

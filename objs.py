@@ -4,8 +4,9 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self, position):
         super().__init__()
         self.hp = 100
-        self.image = pygame.Surface((200, 100))
-        self.image.fill((255, 255, 255))
+        self.image = pygame.image.load("assets/images/enemy.png")
+        # self.image = pygame.Surface((200, 100))
+        # self.image.fill((255, 255, 255))
         self.rect = self.image.get_rect(center=position)
         self.speed = 1
         self.power = 1
@@ -28,6 +29,7 @@ class FastEnemy(Enemy):
         super().__init__(position)
         self.speed = 3
         self.power = .2
+        self.image = pygame.image.load("assets/images/enemy.png")
     
     def laser(self, player, screen):
         pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
@@ -36,7 +38,7 @@ class FastEnemy(Enemy):
         pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
     
     def draw(self, player, screen):
-        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        screen.blit(self.image, self.rect)
         if player.rect.x < self.rect.centerx < player.rect.right:
             self.laser(player, screen)
             player.hp -= self.power
@@ -50,6 +52,7 @@ class SlowEnemy(Enemy):
         self.missiles = []
         self.missilecount = 5
         self.missilecooldown = 0
+        self.image = pygame.image.load("assets/images/enemy.png")
     
     def update(self, player):
         if player.rect.centerx > self.rect.right:
@@ -69,7 +72,7 @@ class SlowEnemy(Enemy):
             self.missiles.append(missile)
         
     def draw(self, player, screen):
-        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        screen.blit(self.image, self.rect)
         for missile in self.missiles:
             missile.update(self.missiles, player, self.power)
             missile.draw(screen)
@@ -271,10 +274,10 @@ class Ship(pygame.sprite.Sprite):
         #     self.prev_pos.append((self.rect.x, self.rect.y))
     
     def laser(self, screen):
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.y), (self.attackrect.x + 5, self.attackrect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.y), (self.attackrect.x + 5, self.attackrect.centery), 2)
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.y), (self.attackrect.right - 5, self.attackrect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.y), (self.attackrect.right - 5, self.attackrect.centery), 2)
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.centery), (self.attackrect.x + 5, self.attackrect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.centery), (self.attackrect.x + 5, self.attackrect.centery), 2)
+        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.centery), (self.attackrect.right - 5, self.attackrect.centery), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.centery), (self.attackrect.right - 5, self.attackrect.centery), 2)
       
     def update(self, controller_connected, display_rect, joystick, enemy_list):
         # self.layer_update -= 1
@@ -445,7 +448,7 @@ class Ship(pygame.sprite.Sprite):
 
     def draw(self, screen):
         screen.blit(self.image, (self.rect.x, self.rect.y))
-        pygame.draw.rect(screen, (255, 0, 255), (self.rect.x, self.rect.y, self.image.get_width(), self.image.get_height()), 1)
+        # pygame.draw.rect(screen, (255, 0, 255), (self.rect.x, self.rect.y, self.image.get_width(), self.image.get_height()), 1)
         pygame.draw.rect(screen, (0, 255, 0), (self.attackrect.x, self.attackrect.y, self.attackrect.width, self.attackrect.height), 1)
         if self.laserbool:
             self.laser(screen)
@@ -459,9 +462,9 @@ class Ship(pygame.sprite.Sprite):
     class Missile(pygame.sprite.Sprite):
         def __init__(self, image_path, position, attackrect):
             super().__init__()
-            # self.image = pygame.image.load(image_path).convert_alpha()
-            self.image = pygame.Surface((50, 50))
-            self.image.fill((255, 0, 0))
+            self.image = pygame.image.load("assets/images/player_missile.png")
+            # self.image = pygame.Surface((50, 50))
+            # self.image.fill((255, 0, 0))
             self.rect = self.image.get_rect(center=position)
             self.speed = 4
             self.target = attackrect.topleft
