@@ -1,5 +1,5 @@
 import pygame, random, math
-from constants import *
+import constants
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, position):
@@ -15,7 +15,10 @@ class Enemy(pygame.sprite.Sprite):
 
     def set_power_factor(self,factor):
         self.power *= factor
-        return self
+    
+    def set_speed_factor(self,factor):
+        self.speed *= factor
+
     def set_hp(self,hp):
         self.hp = hp
         self.max_hp = hp
@@ -84,7 +87,7 @@ class SlowEnemy(Enemy):
 
         self.power = 10
         self.missiles = []
-        self.missilecount = 5
+        self.missile_max = 5
         self.missilecooldown = 0
         self.image = pygame.image.load("assets/images/enemy.png")
         self.original_position = position
@@ -104,7 +107,7 @@ class SlowEnemy(Enemy):
             self.missilecooldown -= 1
         if self.missilecooldown == 0:
             self.missilecooldown = 50
-            self.missilecount -= 1
+            self.missile_max -= 1
             missile = self.Missile("assets/images/enemy_missile.png", self.rect.center, player.rect)
             self.missiles.append(missile)
         
@@ -157,18 +160,25 @@ class MiniBoss(Enemy):
         super().__init__(position)
         self.hp = 1000
         self.max_hp = self.hp
-
+        self.image = pygame.transform.scale2x(pygame.image.load("assets/images/enemy.png").convert_alpha())
+        self.rect = self.image.get_frect(center = position)
+        self.original_position = self.rect.topleft
         self.speed = 5
         self.missiles = []
-        self.missilecount = 5
+        self.missile_max = 5
         self.missilecooldown = 0
     
     def laser(self, player, screen):
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 2)
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
-    
+        start_point1 = self.rect.move(20,10).midleft
+        end_point1 = player.rect.move(-5,0).center
+        start_point2 = self.rect.move(-20,10).midright
+        end_point2 = player.rect.move(5,0).center
+
+        pygame.draw.line(screen, (255, 0, 0), start_point1, end_point1, 4)
+        pygame.draw.line(screen, (255, 255, 255), start_point1, end_point1, 2)
+        pygame.draw.line(screen, (255, 0, 0), start_point2, end_point2, 4)
+        pygame.draw.line(screen, (255, 255, 255), start_point2, end_point2, 2)
+
     def update(self, player):
         if player.rect.centerx > self.rect.right:
             self.velocity.x += self.speed
@@ -177,120 +187,158 @@ class MiniBoss(Enemy):
         else:
             self.velocity.x = 0
         self.rect.move_ip(self.velocity)
+        self.rect.y = self.original_position[1] - 14 * math.cos(pygame.time.get_ticks()/300)
 
         if self.missilecooldown > 0:
             self.missilecooldown -= 1
         if self.missilecooldown == 0:
             self.missilecooldown = 50
-            self.missilecount -= 1
-            missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), player.rect)
+            self.missile_max -= 1
+            missile = self.Missile("assets/images/enemy_missile.png", self.rect.center, player.rect,self.power)
             self.missiles.append(missile)
         
     def draw(self, player, screen):
-        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        # pygame.draw.rect(screen, (255, 0, 0), self.rect)
         for missile in self.missiles:
             missile.update(self.missiles, player)
             missile.draw(screen)
-        if player.rect.x < self.rect.centerx < player.rect.right:
+        if player.rect.x + 50 < self.rect.centerx < player.rect.right-50:
             self.laser(player, screen)
             player.hp -= 1
+        screen.blit(self.image,self.rect)
         
     class Missile(pygame.sprite.Sprite):
-        def __init__(self, image_path, position, attackrect):
+        def __init__(self, image_path, position, attackrect,power):
             super().__init__()
-            self.image = pygame.Surface((50, 50))
-            self.image.fill((255, 0, 0))
-            self.rect = self.image.get_rect(center=position)
-            self.speed = 4
-            self.target = attackrect.topleft
+            self.power = power
+            self.image = pygame.image.load(image_path).convert_alpha()
             self.explosion_sound = pygame.Sound("assets/audio/explosion.wav")
 
-
-        def update(self, missiles, player):
-            dx = player.rect.x - self.rect.x
-            dy = player.rect.y - self.rect.y
+            self.rect = self.image.get_rect(center=position)
+            self.speed = 4
+            # Calculate direction vector towards the center of attackrect
+            target_x, target_y = attackrect.center
+            dx = target_x - self.rect.centerx
+            dy = target_y - self.rect.centery
             distance = (dx ** 2 + dy ** 2) ** 0.5
             if distance == 0:
-                return
-            dx = (dx / distance) * self.speed
-            dy = self.speed
-            self.rect.x += dx
-            self.rect.y += dy
-            if self.rect.colliderect(pygame.Rect(player.rect.x, player.rect.y - 10, 40, 20)) or self.rect.bottom >= player.rect.y:
+                self.velocity = pygame.Vector2(0, self.speed)
+            else:
+                self.velocity = pygame.Vector2(dx / distance * self.speed, dy / distance * self.speed)
+            
+            self.image = pygame.transform.rotate(self.image,self.velocity.angle_to(pygame.Vector2(0,1)))
+
+        def update(self, missiles, player):
+            self.rect.x += self.velocity.x
+            self.rect.y += self.velocity.y
+            # Check collision with player
+            hitbox = pygame.Rect(0,0,150,70)
+            hitbox.center = player.rect.center
+            if self.rect.colliderect(hitbox):
+                player.hp -= self.power
                 self.kill()
-                missiles.remove(self)
-        
+                if self in missiles:
+                    missiles.remove(self)
         def draw(self, screen):
+            if self.rect.top > screen.get_height():
+                self.kill()
             screen.blit(self.image, (self.rect.x, self.rect.y))
 
 class Boss(Enemy):
     def __init__(self, position):
         super().__init__(position)
-        self.hp = 3000
-        self.max_hp = self.hp
+        self.hp = 2000
 
-        self.missiles = pygame.sprite.Group()
-        self.missilecount = 5
+        self.max_hp = self.hp
+        self.image = pygame.transform.scale2x(pygame.image.load("assets/images/enemy.png").convert_alpha())
+        self.rect = self.image.get_frect(center=position)
+        self.original_position = self.rect.topleft
+        self.speed = 4
+        self.missiles = []
+        self.missile_max = 10
         self.missilecooldown = 0
-    
+
     def laser(self, player, screen):
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.x + 20, self.rect.bottom), (player.rect.x + 5, player.rect.centery), 2)
-        pygame.draw.line(screen, (255, 0, 0), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.rect.right - 20, self.rect.bottom), (player.rect.right - 5, player.rect.centery), 2)
-    
+        start_point1 = self.rect.move(20, 10).midleft
+        end_point1 = player.rect.move(-5, 0).center
+        start_point2 = self.rect.move(-20, 10).midright
+        end_point2 = player.rect.move(5, 0).center
+
+        pygame.draw.line(screen, (0, 0, 255), start_point1, end_point1, 6)
+        pygame.draw.line(screen, (255, 255, 255), start_point1, end_point1, 3)
+        pygame.draw.line(screen, (0, 0, 255), start_point2, end_point2, 6)
+        pygame.draw.line(screen, (255, 255, 255), start_point2, end_point2, 3)
+
     def update(self, player):
-        if player.rect.centerx > self.rect.right:
-            self.velocity.x += self.speed
-        elif player.rect.centerx < self.rect.x:
-            self.velocity.x -= self.speed
+        diff = player.rect.centerx - self.rect.centerx
+        if diff!=0:
+            if abs(diff) > self.speed*2:
+                self.velocity.x =(player.rect.centerx-self.rect.centerx)/20
+            else:
+                self.velocity.x+=self.speed if diff > 0 else -self.speed
         else:
             self.velocity.x = 0
         self.rect.move_ip(self.velocity)
+        self.rect.y = self.original_position[1] - 14 * math.cos(pygame.time.get_ticks()/300)
+
 
         if self.missilecooldown > 0:
             self.missilecooldown -= 1
         if self.missilecooldown == 0:
             self.missilecooldown = 50
-            self.missilecount -= 1
-            missile = self.Missile("missile.png", (self.rect.centerx, self.rect.y), player.rect)
-            self.missiles.add(missile)
-        
+            self.missile_max -= 2
+            missile1 = self.Missile("assets/images/enemy_missile.png", self.rect.center, player.rect, self.power, -10)
+            missile2 = self.Missile("assets/images/enemy_missile.png", self.rect.center, player.rect, self.power, 10)
+            self.missiles.append(missile1)
+            self.missiles.append(missile2)
+
     def draw(self, player, screen):
-        pygame.draw.rect(screen, (255, 0, 0), self.rect)
         for missile in self.missiles:
             missile.update(self.missiles, player)
             missile.draw(screen)
-        if player.rect.x < self.rect.centerx < player.rect.right:
+        if player.rect.x + 50 < self.rect.centerx < player.rect.right - 50:
             self.laser(player, screen)
             player.hp -= 1
-        
+        screen.blit(self.image, self.rect)
+
     class Missile(pygame.sprite.Sprite):
-        def __init__(self, image_path, position, attackrect):
+        def __init__(self, image_path, position, attackrect, power, angle_offset):
             super().__init__()
-            self.image = pygame.Surface((50, 50))
-            self.image.fill((255, 0, 0))
-            self.rect = self.image.get_rect(center=position)
-            self.speed = 4
-            self.target = attackrect.topleft
+            self.power = power
+            self.image = pygame.image.load(image_path).convert_alpha()
             self.explosion_sound = pygame.Sound("assets/audio/explosion.wav")
 
-        def update(self, missiles, player):
-            dx = player.rect.x - self.rect.x
-            dy = player.rect.y - self.rect.y
+            self.rect = self.image.get_rect(center=position)
+            self.speed = 4
+            # Calculate direction vector towards the center of attackrect with angle offset
+            target_x, target_y = attackrect.center
+            dx = target_x - self.rect.centerx
+            dy = target_y - self.rect.centery
             distance = (dx ** 2 + dy ** 2) ** 0.5
             if distance == 0:
-                return
-            dx = (dx / distance) * self.speed
-            dy = self.speed
-            self.rect.x += dx
-            self.rect.y += dy
-            if self.rect.colliderect(pygame.Rect(player.rect.x, player.rect.y - 10, 40, 20)) or self.rect.bottom >= player.rect.y:
-                self.kill()
-        
-        def draw(self, screen):
-            screen.blit(self.image, (self.rect.x, self.rect.y))
+                self.velocity = pygame.Vector2(0, self.speed)
+            else:
+                self.velocity = pygame.Vector2(dx / distance * self.speed, dy / distance * self.speed)
+                self.velocity = self.velocity.rotate(angle_offset)
 
+            self.image = pygame.transform.rotate(self.image, self.velocity.angle_to(pygame.Vector2(0, 1)))
+
+        def update(self, missiles, player):
+            self.rect.x += self.velocity.x
+            self.rect.y += self.velocity.y
+            # Check collision with player
+            hitbox = pygame.Rect(0, 0, 150, 70)
+            hitbox.center = player.rect.center
+            if self.rect.colliderect(hitbox):
+                player.hp -= self.power
+                self.kill()
+                if self in missiles:
+                    missiles.remove(self)
+
+        def draw(self, screen):
+            if self.rect.top > screen.get_height():
+                self.kill()
+            screen.blit(self.image, (self.rect.x, self.rect.y))
 
 # --- Ship Class ---
 class Ship(pygame.sprite.Sprite):
@@ -325,6 +373,7 @@ class Ship(pygame.sprite.Sprite):
         self.acceleration = 2
         self.speed = 20
         self.boost_multiplier = 4
+        self.accel_multiplier = 1.5
         self.velocity = pygame.Vector2(0, 0)
         self.friction = 0.85
 
@@ -336,21 +385,26 @@ class Ship(pygame.sprite.Sprite):
         self.attackrect = pygame.Rect(self.rect.x + 80, self.rect.y - 200, 40, 20)
         self.laserbool = False
         self.missiles = pygame.sprite.Group()
-        self.missilecount = 5
+        self.missile_max = 5
+        self.missile_float = self.missile_max
+        self.missile_recovery = 0.005
         self.missilecooldown = 0
         self.laser_damage = 0.3
 
     def reset(self, position, display_rect,level:int=0):
         """Reset the ship's state for a retry after game over."""
         if level == 0:
-            self.hp = 500 
+            self.hp = 500
+            self.max_hp = 500
         else:
             self.max_hp+=100
-            self.hp += 200
-            self.hp = min(self.max_hp,self.fuel)
+            self.hp += 100
+            self.hp = min(self.max_hp,self.hp)
         if level == 0:
             self.fuel = 500
+            self.max_fuel = 500
         else:
+            self.max_fuel = 500+level*200
             self.fuel = min(self.fuel+200,self.max_fuel)
 
         
@@ -364,8 +418,10 @@ class Ship(pygame.sprite.Sprite):
         self.target_angle = 0.0
         self.velocity = pygame.Vector2(0, 0)
         self.missiles.empty()
-        self.missilecount = 5 + 2 * level
+        self.missile_max = 5 + 2 * level
         self.missilecooldown = 0
+        self.missile_float = self.missile_max
+        self.missile_recovery = 0.005 + 0.001*level
         self.rect = self.image.get_rect(center=position)
         self.attackrect = pygame.Rect(self.rect.x + 80, self.rect.y - 200, 40, 20)
         self.laser_damage = 0.3 + 0.2 * level
@@ -376,9 +432,10 @@ class Ship(pygame.sprite.Sprite):
         move = pygame.Vector2(move_x, move_y)
         if move.length_squared() > 0:
             move = move.normalize()
-            # speed = self.speed * (self.boost_multiplier if boost and self.fuel > 0 else 1)
-            self.velocity += move * self.acceleration
-            self.velocity.clamp_magnitude_ip(self.speed)
+            speed = self.speed * (self.boost_multiplier if boost and self.fuel > 0 else 1)
+            accel = self.acceleration* (self.accel_multiplier if boost and self.fuel > 0 else 1)
+            self.velocity += move * accel
+            self.velocity.clamp_magnitude_ip(speed)
             self.target_angle = move.angle_to(pygame.Vector2(0, -1))
             
             self.target_angle = (self.target_angle + 180) % 360 - 180
@@ -390,16 +447,16 @@ class Ship(pygame.sprite.Sprite):
 
     def _handle_keyboard(self):
         keys = pygame.key.get_pressed()
-        move_x = (keys[KEY_RIGHT] - keys[KEY_LEFT])
-        move_y = (keys[KEY_DOWN] - keys[KEY_UP])
-        boost = keys[KEY_SHIFT]
+        move_x = (keys[constants.KEY_RIGHT] - keys[constants.KEY_LEFT])
+        move_y = (keys[constants.KEY_DOWN] - keys[constants.KEY_UP])
+        boost = keys[constants.KEY_SHIFT]
         self._apply_velocity_input(move_x, move_y, boost)
 
 
     def _handle_joystick(self, joystick):
-        axis_x = joystick.get_axis(JOY_AXIS_X)
-        axis_y = joystick.get_axis(JOY_AXIS_Y)
-        axis_speed = joystick.get_axis(JOY_AXIS_SPEED)
+        axis_x = joystick.get_axis(constants.JOY_AXIS_X)
+        axis_y = joystick.get_axis(constants.JOY_AXIS_Y)
+        axis_speed = joystick.get_axis(constants.JOY_AXIS_SPEED)
         boost = axis_speed > 0
         self._apply_velocity_input(axis_x, axis_y, boost)
 
@@ -441,10 +498,14 @@ class Ship(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # Cooldowns and special
+        self.missile_float = min(self.missile_max,self.missile_float + self.missile_recovery)
+
         if self.missilecooldown > 0:
             self.missilecooldown -= 1
         if self.spacial_count > 0 and self.spacial_used:
             self.spacial_count -= 1
+            self.fuel = max(20,self.fuel - 1)
+            
 
         if controller_connected and joystick:
             self._update_attack_joystick(display_rect,joystick,enemy_list)
@@ -453,7 +514,7 @@ class Ship(pygame.sprite.Sprite):
             self._update_attack(display_rect,enemy_list)
 
         for missile in self.missiles.copy():
-            missile.update(self.missiles,enemy_list)
+            missile.update(self.missiles,display_rect,enemy_list)
 
     def laser(self, screen):
         """Draws the ship's laser attack with rotated start points."""
@@ -495,11 +556,15 @@ class Ship(pygame.sprite.Sprite):
         mouse_pressed = pygame.mouse.get_just_pressed()
         mouse_buttons = pygame.mouse.get_pressed()
         mouse_released = pygame.mouse.get_just_released()
+        keys = pygame.key.get_pressed()
+        self.attackrect.center = pygame.mouse.get_pos()
 
-        if mouse_pressed[MOUSE_LEFT]:
+
+        if mouse_pressed[constants.MOUSE_LEFT]:
             self.laserbool = True
-            self.laser_sound.play(-1)
-        elif mouse_released[MOUSE_LEFT]:
+            if self.fuel : 
+                self.laser_sound.play(-1)
+        elif mouse_released[constants.MOUSE_LEFT]:
             self.laserbool = False
             self.laser_sound.stop()
 
@@ -510,28 +575,27 @@ class Ship(pygame.sprite.Sprite):
                     if enemy.hp <= 0:
                         enemy.kill()
 
-        if mouse_buttons[MOUSE_LEFT] and self.fuel > 0:
+        if mouse_buttons[constants.MOUSE_LEFT] and self.fuel > 0:
             self.fuel -= .2
         else:
             self.laserbool = False
+            self.laser_sound.stop()
 
-        if mouse_buttons[MOUSE_RIGHT] and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
+        if mouse_buttons[constants.MOUSE_RIGHT] and self.missile_float > 1 and self.missilecooldown == 0:
             self.missilecooldown = 50
-            self.missilecount -= 1
+            self.missile_float -= 1
             missile = PlayerMissile("missile.png", (self.rect.centerx, self.rect.y), self.attackrect)
             self.missiles.add(missile)
     
-        keys = pygame.key.get_pressed()
-        if keys[KEY_SPACE] and not self.spacial_used:
+        if keys[constants.KEY_SPACE] and not self.spacial_used and self.fuel:
             self.spacial_used = True
             self.spacial_sound.play()
             for enemy in enemy_list:
                 enemy.kill()
-        self.attackrect.center = pygame.mouse.get_pos()
 
     def _update_attack_joystick(self, display_rect, joystick, enemy_list):
         # Attacks
-        if joystick.get_button(JOY_BTN_LASER) and not self.laserbool:
+        if joystick.get_button(constants.JOY_BTN_LASER) and not self.laserbool:
             self.laserbool = True
             for enemy in enemy_list:
                 if self.attackrect.colliderect(enemy):
@@ -541,35 +605,31 @@ class Ship(pygame.sprite.Sprite):
         else:
             self.laserbool = False
 
-        if joystick.get_button(JOY_BTN_LASER) and self.fuel > 0:
+        if joystick.get_button(constants.JOY_BTN_LASER) and self.fuel > 0:
             self.fuel -= .2
         else:
             self.laserbool = False
 
-        if joystick.get_button(JOY_BTN_MISSILE) and len(self.missiles) < self.missilecount and self.missilecooldown == 0:
+        if joystick.get_button(constants.JOY_BTN_MISSILE) and self.missile_float > 1 and self.missilecooldown == 0:
             self.missilecooldown = 50
-            self.missilecount -= 1
+            self.missile_float -= 1
             missile = PlayerMissile("missile.png", (self.rect.centerx, self.rect.y), self.attackrect)
             self.missiles.add(missile)
 
-        for missile in self.missiles:
-            for enemy in missile.get_collided_targets(enemy_list):
-                enemy.hp -= 10
-                break
 
-        if joystick.get_axis(JOY_AXIS_SPACIAL) > 0 and not self.spacial_used:
+        if joystick.get_axis(constants.JOY_AXIS_SPACIAL) > 0 and not self.spacial_used and self.fuel:
             self.spacial_used = True
             for enemy in enemy_list:
                 enemy.hp = 0
 
         # Attack rect velocity
-        if round(joystick.get_axis(JOY_AXIS_ATTACK_X)) > 0:
+        if round(joystick.get_axis(constants.JOY_AXIS_ATTACK_X)) > 0:
             self.attackrect.x += 15
-        elif int(joystick.get_axis(JOY_AXIS_ATTACK_X)) < 0:
+        elif int(joystick.get_axis(constants.JOY_AXIS_ATTACK_X)) < 0:
             self.attackrect.x -= 15
-        if round(joystick.get_axis(JOY_AXIS_ATTACK_Y)) > 0:
+        if round(joystick.get_axis(constants.JOY_AXIS_ATTACK_Y)) > 0:
             self.attackrect.y += 15
-        elif int(joystick.get_axis(JOY_AXIS_ATTACK_Y)) < 0:
+        elif int(joystick.get_axis(constants.JOY_AXIS_ATTACK_Y)) < 0:
             self.attackrect.y -= 15
 
     def draw(self, screen):
@@ -597,6 +657,8 @@ class PlayerMissile(pygame.sprite.Sprite):
         self.explosion_sound = pygame.Sound("assets/audio/explosion.wav")
         self.missile_sound = pygame.Sound("assets/audio/missile.wav")
         self.missile_sound.set_volume(0.4)
+        self.missile_sound.set_volume(0.3)
+
 
 
         self.rect = self.base_image.get_rect(center=position)
@@ -611,10 +673,8 @@ class PlayerMissile(pygame.sprite.Sprite):
         else:
             self.velocity = pygame.Vector2(dx / distance * self.speed, dy / distance * self.speed)
         self.missile_sound.play()
-    def kill(self):
-        super().kill()
-        self.explosion_sound.play()
-        self.missile_sound.stop()
+
+
     def get_collided_targets(self, targets):
         for target in targets :
             hitbox = pygame.Rect(0,0,150,70)
@@ -622,17 +682,21 @@ class PlayerMissile(pygame.sprite.Sprite):
             if self.rect.colliderect(hitbox):
                 yield target
 
-    def update(self, missiles, targets=None):
+    def update(self, missiles, display_rect,targets=None):
         self.rect.x += self.velocity.x
         self.rect.y += self.velocity.y
         if targets:
             for target in self.get_collided_targets(targets):
                 target.hp -= 10
                 self.kill()
+                self.explosion_sound.play()
+                self.missile_sound.stop()
 
                 if self in missiles:
                     missiles.remove(self)
                 break
+        if not self.rect.colliderect(display_rect):
+            self.kill()
         self.image  = pygame.transform.rotate(self.base_image, self.velocity.angle_to(pygame.Vector2(0, -1)))
         self.rect = self.image.get_rect(center = self.rect.center)
 

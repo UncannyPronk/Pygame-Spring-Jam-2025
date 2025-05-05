@@ -2,15 +2,19 @@ import pygame
 import sys
 import random
 from pygame.locals import *
-from objs import Ship, Star, FastEnemy, SlowEnemy
+from objs import Ship, Star, Enemy,FastEnemy, SlowEnemy, MiniBoss, Boss
 from dialogue_system import speak
 from constants import *
 FPS = 60
 
 LEVELS = [
-    [(FastEnemy,(100, 70),20,None)],
-    [(FastEnemy,(100, 70),800,0.8), (SlowEnemy,(400, 150),None,None)],
-    [(FastEnemy,(100, 70),None,None), (SlowEnemy,(400, 150),None,None)],
+    [(FastEnemy,(100, 70),100,None)],
+    [(FastEnemy,(100, 70),200,0.8), (SlowEnemy,(400, 150),200,None)],
+    [(FastEnemy,(100, 70),250,0.8,0.4), (FastEnemy,(400, 150),250,1.2,0.5),(FastEnemy,(400, 220),250,1.2,0.7)],
+    [(MiniBoss,(100, 150),None,None)],
+    [(SlowEnemy,(400, 70),600,0.7,1.8), (SlowEnemy,(400, 150),600,0.7)],
+    [(SlowEnemy,(400, 0),500,None,0.3),(FastEnemy,(100, 70),600,0.8,0.5),(SlowEnemy,(400, 150),450,None),(FastEnemy,(400, 220),400,1.2,1.3)],
+    [(Boss,(400,190),None,None)],
 
 ]
 
@@ -25,6 +29,7 @@ class Game:
         self.stars = [Star(self.display_rect, True) for _ in range(120)]
         self.enemies = pygame.sprite.Group()
         self.controller_connected = False
+        self.keyboard_layout = "AZERTY"
         self.joy = None
         self.running = True
         self.level = 0
@@ -36,24 +41,26 @@ class Game:
     def set_level(self,level:int=0):
         if level >= len(LEVELS):
             self.state = "win"
+            self.player.laser_sound.stop()
             return
         self.level = level
         
         self.enemies.empty()
-        self.player.reset(self.display_rect.center if level==0 else self.player.rect.center,self.display_rect)
+        self.player.reset(self.display_rect.center if level==0 else self.player.rect.center,self.display_rect,level)
         for data in LEVELS[level]:
             cls = data[0]
             pos = data[1]
             hp = data[2]
             power = data[3]
-            
-            enemy = cls(pos)
+            speed = data[4] if len(data)>4 else None
+            enemy : Enemy = cls(pos)
             if hp is not None:
                 enemy.set_hp(hp)
             if power is not None:
                 enemy.set_power_factor(power)
+            if speed is not None:
+                enemy.set_speed_factor(speed)
             self.enemies.add(enemy)
-
 
 
     def handle_events(self):
@@ -105,13 +112,15 @@ class Game:
     def draw_status(self):
         self.draw_meter((255, 0, 0), pygame.Rect(20, 20, 500, 20), self.player.max_hp, self.player.hp)
         self.draw_meter((255, 255, 0), pygame.Rect(20, 50, 100, 20), self.player.max_fuel, self.player.fuel)
+        self.draw_meter((255, 0, 255), pygame.Rect(20, 80, 50, 20), self.player.missile_max,self.player.missile_float)
+
 
         for i,enemy in enumerate(self.enemies):
             self.draw_meter(COLOR_DEEP_PURPLE,(self.display_rect.right-120,20+30*i,100,20),enemy.max_hp,enemy.hp)
 
 
         # self.screen.blit(self.font.render(str(self.player.target_angle),True,"white"))
-        self.label(self.display_rect.move(-50,-20).topright,str(round(self.clock.get_fps())),'white')
+        # self.label(self.display_rect.move(-50,20).topright,str(round(self.clock.get_fps())),'white')
 
     def draw(self):
         self.screen.fill((0, 0, 6))
@@ -145,12 +154,18 @@ class Game:
     def _game(self):
         if self.player.hp < 0:
             self.state = "game over"
+            self.player.laser_sound.stop()
+        keys = pygame.key.get_just_pressed()
+        if keys[pygame.K_ESCAPE]:
+            self.state = "title"
+            self.player.laser_sound.stop()
+            
         self.update_stars()
         self.player.update(self.controller_connected, self.display_rect, self.joy, self.enemies)
         self.update_enemies()
         self.draw()
         self.draw_status()
-        self.label(self.display_rect.move(0,10).midtop,f"LEVEL {self.level}","white",None)
+        self.label(self.display_rect.move(0,20).midtop,f"LEVEL {self.level+1}","white","black")
 
     def button(self, center, text, color, bgcolor=None, border_color=None, border_width=2, hover_color=(80, 80, 80), radius=8):
         """Draws a button, blits it, and returns pressed (True/False)."""
@@ -204,7 +219,7 @@ class Game:
             self.screen.blit(surf, rect)
 
     def _title(self):
-        title_surf = self.font.render("Spring Jam 2025", True, (255, 255, 255))
+        title_surf = self.font.render("SPACE E-RACER", True, (255, 255, 255))
         title_rect = title_surf.get_rect(center=(self.display_rect.centerx, 100))
         self.screen.blit(title_surf, title_rect)
 
@@ -231,12 +246,23 @@ class Game:
             COLOR_BLUE
         )
 
+        instructions_pressed = self.button(
+            self.display_rect.move(0, 150).center,
+            "Instructions",
+            "white",
+            COLOR_DEEP_ORANGE
+        )
+
+
         quit_pressed = self.button(
-            self.display_rect.move(0,150).center,
+            self.display_rect.move(0,200).center,
             "Quit",
             "white",
             COLOR_RED
         )
+
+        if instructions_pressed:
+            self.state = "instructions"
 
         if credits_pressed:
             self.state = "credits"
@@ -328,6 +354,13 @@ class Game:
             COLOR_GREEN
         )
 
+        layout_pressed = self.button(
+            (self.display_rect.centerx, self.display_rect.centery),
+            f"LAYOUT : {self.keyboard_layout}",
+            "white",
+            COLOR_DEEP_ORANGE
+        )
+
         back_pressed = self.button(
             (self.display_rect.centerx, self.display_rect.centery + 50),
             "Back",
@@ -338,6 +371,47 @@ class Game:
         if fullscreen_pressed:
             pygame.display.toggle_fullscreen()
 
+        if layout_pressed:
+            self.keyboard_layout = "AZERTY" if self.keyboard_layout == "QWERTY" else "QWERTY"
+            if self.keyboard_layout == "AZERTY":
+                switch_to_azerty()
+            else:
+                switch_to_qwerty()
+
+        if back_pressed:
+            self.state = "title"
+
+    def _instructions(self):
+        instructions = [
+            "Instructions:",
+            "Move: WASD or Left Stick",
+            "Boost: Shift or RT",
+            "Aim: Mouse or Right Stick",
+            "Laser: Left Click or RB",
+            "Missile: Right Click or LB",
+            "Special: Space or LT",
+            "Avoid enemy fire.",
+            "Clear all enemies to advance.",
+            "Defeat the boss to win."
+        ]
+
+
+        y_offset = 100
+        for line in instructions:
+            self.label(
+                (self.display_rect.centerx, y_offset),
+                line,
+                "white"
+            )
+            y_offset += 40
+
+        back_pressed = self.button(
+            (self.display_rect.centerx, self.display_rect.centery + 200),
+            "Back",
+            "white",
+            COLOR_BLUE
+        )
+
         if back_pressed:
             self.state = "title"
 
@@ -347,6 +421,8 @@ class Game:
             self.screen.fill((0,0,0))
             if self.state == "game":
                 self._game()
+            elif self.state == "instructions":
+                self._instructions()
             elif self.state == "title":
                 self._title()
             elif self.state == "credits":

@@ -22,6 +22,21 @@ JOY_BTN_LASER = 5
 JOY_BTN_MISSILE = 4
 
 
+
+def switch_to_azerty():
+    global KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN
+    KEY_LEFT = pygame.K_q
+    KEY_RIGHT = pygame.K_d
+    KEY_UP = pygame.K_z
+    KEY_DOWN = pygame.K_s
+
+def switch_to_qwerty():
+    global KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN
+    KEY_LEFT = pygame.K_a
+    KEY_RIGHT = pygame.K_d
+    KEY_UP = pygame.K_w
+    KEY_DOWN = pygame.K_s
+
 # --- Material Style Color Constants ---
 COLOR_RED = pygame.Color(244, 67, 54)
 COLOR_PINK = pygame.Color(233, 30, 99)
@@ -42,3 +57,4 @@ COLOR_DEEP_ORANGE = pygame.Color(255, 87, 34)
 COLOR_BROWN = pygame.Color(121, 85, 72)
 COLOR_GREY = pygame.Color(158, 158, 158)
 COLOR_BLUE_GREY = pygame.Color(96, 125, 139)
+
