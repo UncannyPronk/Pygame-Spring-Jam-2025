@@ -1,3 +1,4 @@
+import math
 import pygame
 import sys
 import random
@@ -7,13 +8,21 @@ from dialogue_system import speak
 from constants import *
 FPS = 60
 
+# LEVELS = [
+#     [(FastEnemy,(100, 70),100,None)],
+#     [(FastEnemy,(100, 70),200,0.8), (SlowEnemy,(400, 150),200,None)],
+#     [(FastEnemy,(100, 70),250,0.8,0.4), (FastEnemy,(400, 150),250,1.2,0.5),(FastEnemy,(400, 220),250,1.2,0.7)],
+#     [(MiniBoss,(100, 150),None,None)],
+#     [(SlowEnemy,(400, 70),600,0.7,1.8), (SlowEnemy,(400, 150),600,0.7)],
+#     [(SlowEnemy,(400, 0),500,None,0.3),(FastEnemy,(100, 70),600,0.8,0.5),(SlowEnemy,(400, 150),450,None),(FastEnemy,(400, 220),400,1.2,1.3)],
+#     [(Boss,(400,190),None,None)],
+
+# ]
 LEVELS = [
-    [(FastEnemy,(100, 70),100,None)],
-    [(FastEnemy,(100, 70),200,0.8), (SlowEnemy,(400, 150),200,None)],
-    [(FastEnemy,(100, 70),250,0.8,0.4), (FastEnemy,(400, 150),250,1.2,0.5),(FastEnemy,(400, 220),250,1.2,0.7)],
-    [(MiniBoss,(100, 150),None,None)],
-    [(SlowEnemy,(400, 70),600,0.7,1.8), (SlowEnemy,(400, 150),600,0.7)],
-    [(SlowEnemy,(400, 0),500,None,0.3),(FastEnemy,(100, 70),600,0.8,0.5),(SlowEnemy,(400, 150),450,None),(FastEnemy,(400, 220),400,1.2,1.3)],
+    [(FastEnemy,(100, 70),10,None)],
+    [(MiniBoss,(100, 150),20,None)],
+    [(FastEnemy,(100, 70),10,None)],
+
     [(Boss,(400,190),None,None)],
 
 ]
@@ -29,26 +38,34 @@ class Game:
         self.stars = [Star(self.display_rect, True) for _ in range(120)]
         self.enemies = pygame.sprite.Group()
         self.controller_connected = False
+        self.enemy_surf = pygame.image.load("assets/images/enemy.png").convert_alpha()
+        self.enemy_surf = pygame.transform.scale_by(self.enemy_surf,1.5)
         self.keyboard_layout = "AZERTY"
         self.joy = None
         self.running = True
         self.level = 0
         self.state = "title"
+        self.set_state("title")
         pygame.mixer.music.load("assets/audio/star_focus.mp3")
-        pygame.mixer.music.play(-1)
+        pygame.mixer.music.play(-1,0,100)
         self.set_level(0)
 
     def set_level(self,level:int=0):
         if level >= len(LEVELS):
-            self.state = "win"
-            self.player.laser_sound.stop()
+            self.set_state("win")
             return
         self.level = level
-        
+        had_boss = False
+        if level >0:
+            had_boss = any(c[0] in [MiniBoss,Boss] for c in LEVELS[level-1])
         self.enemies.empty()
         self.player.reset(self.display_rect.center if level==0 else self.player.rect.center,self.display_rect,level)
+        has_boss = False
         for data in LEVELS[level]:
             cls = data[0]
+            if not has_boss:
+                has_boss = cls in [MiniBoss,Boss]
+            
             pos = data[1]
             hp = data[2]
             power = data[3]
@@ -61,6 +78,12 @@ class Game:
             if speed is not None:
                 enemy.set_speed_factor(speed)
             self.enemies.add(enemy)
+        if has_boss:
+            pygame.mixer.music.load("assets/audio/boss.mp3")
+            pygame.mixer.music.play(-1,0,100)
+        elif had_boss:
+            pygame.mixer.music.fadeout(500)
+            pygame.mixer.music.queue("assets/audio/star_focus.mp3",loops=-1)
 
 
     def handle_events(self):
@@ -153,12 +176,10 @@ class Game:
 
     def _game(self):
         if self.player.hp < 0:
-            self.state = "game over"
-            self.player.laser_sound.stop()
+            self.set_state("game over")
         keys = pygame.key.get_just_pressed()
         if keys[pygame.K_ESCAPE]:
-            self.state = "title"
-            self.player.laser_sound.stop()
+            self.set_state("title")
             
         self.update_stars()
         self.player.update(self.controller_connected, self.display_rect, self.joy, self.enemies)
@@ -222,7 +243,9 @@ class Game:
         title_surf = self.font.render("SPACE E-RACER", True, (255, 255, 255))
         title_rect = title_surf.get_rect(center=(self.display_rect.centerx, 100))
         self.screen.blit(title_surf, title_rect)
-
+        r = self.enemy_surf.get_rect(center=  self.display_rect.move(0,-150).center)
+        r.y += - 10 * math.cos(pygame.time.get_ticks()/300)
+        self.screen.blit(self.enemy_surf,r)
 
         play_pressed = self.button(
             self.display_rect.center,
@@ -262,16 +285,14 @@ class Game:
         )
 
         if instructions_pressed:
-            self.state = "instructions"
+            self.set_state("instructions")
 
         if credits_pressed:
-            self.state = "credits"
+            self.set_state("credits")
         if options_pressed:
-            self.state = "options"
+            self.set_state("options")
         if play_pressed or (self.joy and self.joy.get_button(JOY_BTN_LASER)):
-            self.state = "game"
-            self.set_level(0)
-            self.stars = [Star(self.display_rect, True) for _ in range(120)]
+            self.set_state("game")
 
         if quit_pressed:
             self.running = False
@@ -292,7 +313,7 @@ class Game:
         )
 
         if back_pressed:
-            self.state = "title"
+            self.set_state("title")
 
     def _game_over(self):
         game_over_surf = self.font.render("Game Over", True, (255, 0, 0))
@@ -322,11 +343,10 @@ class Game:
         )
 
         if retry_pressed:
-            self.state = "game"
-            self.set_level(0)
-            self.stars = [Star(self.display_rect, True) for _ in range(120)]
+            self.set_state("game")
+
         if title:
-            self.state = "title"
+            self.set_state("title")
         if quit_pressed:
             self.running = False
 
@@ -343,7 +363,7 @@ class Game:
         )
 
         if back_pressed:
-            self.state = "title"
+            self.set_state("title")
 
 
     def _options(self):
@@ -379,7 +399,7 @@ class Game:
                 switch_to_qwerty()
 
         if back_pressed:
-            self.state = "title"
+            self.set_state("title")
 
     def _instructions(self):
         instructions = [
@@ -413,7 +433,18 @@ class Game:
         )
 
         if back_pressed:
-            self.state = "title"
+            self.set_state("title")
+
+    def set_state(self,state):
+        if self.state == "game" and state !="game":
+            pygame.mixer.music.load("assets/audio/star_focus.mp3")
+            pygame.mixer.music.play(-1)
+        self.state = state
+        self.player.laser_sound.stop()
+
+        if state == "game":
+            self.set_level(0)
+            self.stars = [Star(self.display_rect, True) for _ in range(120)]
 
     def run(self):
         while self.running:
