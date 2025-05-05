@@ -8,24 +8,17 @@ from dialogue_system import speak
 from constants import *
 FPS = 60
 
-# LEVELS = [
-#     [(FastEnemy,(100, 70),100,None)],
-#     [(FastEnemy,(100, 70),200,0.8), (SlowEnemy,(400, 150),200,None)],
-#     [(FastEnemy,(100, 70),250,0.8,0.4), (FastEnemy,(400, 150),250,1.2,0.5),(FastEnemy,(400, 220),250,1.2,0.7)],
-#     [(MiniBoss,(100, 150),None,None)],
-#     [(SlowEnemy,(400, 70),600,0.7,1.8), (SlowEnemy,(400, 150),600,0.7)],
-#     [(SlowEnemy,(400, 0),500,None,0.3),(FastEnemy,(100, 70),600,0.8,0.5),(SlowEnemy,(400, 150),450,None),(FastEnemy,(400, 220),400,1.2,1.3)],
-#     [(Boss,(400,190),None,None)],
-
-# ]
 LEVELS = [
-    [(FastEnemy,(100, 70),10,None)],
-    [(MiniBoss,(100, 150),20,None)],
-    [(FastEnemy,(100, 70),10,None)],
-
+    [(FastEnemy,(100, 70),100,None)],
+    [(FastEnemy,(100, 70),200,0.8), (SlowEnemy,(400, 150),200,None)],
+    [(FastEnemy,(100, 70),250,0.8,0.4), (FastEnemy,(400, 150),250,1.2,0.5),(FastEnemy,(400, 220),250,1.2,0.7)],
+    [(MiniBoss,(100, 150),None,None)],
+    [(SlowEnemy,(400, 70),600,0.7,1.8), (SlowEnemy,(400, 150),600,0.7)],
+    [(SlowEnemy,(400, 0),500,None,0.3),(FastEnemy,(100, 70),600,0.8,0.5),(SlowEnemy,(400, 150),450,None),(FastEnemy,(400, 220),400,1.2,1.3)],
     [(Boss,(400,190),None,None)],
 
 ]
+
 
 
 class Game:
