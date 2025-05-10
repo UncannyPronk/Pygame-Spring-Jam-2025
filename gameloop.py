@@ -19,15 +19,18 @@ LEVELS = [
 
 ]
 
-
+spacial_used = False
 
 class Game:
     def __init__(self, screen: pygame.Surface):
+        global spacial_used
         self.screen = screen
         self.font = pygame.font.SysFont("monospace",24)
         self.clock = pygame.time.Clock()
         self.display_rect = self.screen.get_rect()
         self.player = Ship((self.display_rect.centerx, self.display_rect.bottom - 300), self.display_rect)
+        if spacial_used:
+            self.player.spacial_used = True
         self.stars = [Star(self.display_rect, True) for _ in range(120)]
         self.enemies = pygame.sprite.Group()
         self.controller_connected = False
@@ -168,12 +171,15 @@ class Game:
         self.player.draw(self.screen)
 
     def _game(self):
+        global spacial_used
         if self.player.hp < 0:
             self.set_state("game over")
         keys = pygame.key.get_just_pressed()
         if keys[pygame.K_ESCAPE]:
             self.set_state("title")
-            
+        
+        if self.player.spacial_used:
+            spacial_used = True
         self.update_stars()
         self.player.update(self.controller_connected, self.display_rect, self.joy, self.enemies)
         self.update_enemies()
