@@ -37,6 +37,7 @@ class Game:
         self.enemy_surf = pygame.image.load("assets/images/enemy.png").convert_alpha()
         self.enemy_surf = pygame.transform.scale_by(self.enemy_surf,1.5)
         self.keyboard_layout = "QWERTY"
+        switch_to_qwerty()
         self.joy = None
         self.running = True
         self.level = 0

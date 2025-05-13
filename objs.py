@@ -408,11 +408,11 @@ class Ship(pygame.sprite.Sprite):
             self.fuel = min(self.fuel+200,self.max_fuel)
 
         
-        self.spacial_used = False
-        self.spacial_count = 500
-        self.spacial_color = 255
-        self.spacial_alpha = 255
-        self.spacial_radius = display_rect.width / 2
+        # self.spacial_used = False
+        # self.spacial_count = 500
+        # self.spacial_color = 255
+        # self.spacial_alpha = 255
+        # self.spacial_radius = display_rect.width / 2
         self.velocity = pygame.Vector2(0, 0)
         self.angle = 0.0
         self.target_angle = 0.0
@@ -591,7 +591,7 @@ class Ship(pygame.sprite.Sprite):
             self.spacial_used = True
             self.spacial_sound.play()
             for enemy in enemy_list:
-                enemy.hp -= 1800
+                enemy.hp -= 800
                 if enemy.hp < 0:
                     enemy.hp = 0
 
