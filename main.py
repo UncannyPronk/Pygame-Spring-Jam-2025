@@ -1,4 +1,4 @@
-      import pygame
+import pygame
 from gameloop import Game
 
 pygame.init()
