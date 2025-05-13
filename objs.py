@@ -591,7 +591,9 @@ class Ship(pygame.sprite.Sprite):
             self.spacial_used = True
             self.spacial_sound.play()
             for enemy in enemy_list:
-                enemy.kill()
+                enemy.hp -= 1800
+                if enemy.hp < 0:
+                    enemy.hp = 0
 
     def _update_attack_joystick(self, display_rect, joystick, enemy_list):
         # Attacks

@@ -36,7 +36,7 @@ class Game:
         self.controller_connected = False
         self.enemy_surf = pygame.image.load("assets/images/enemy.png").convert_alpha()
         self.enemy_surf = pygame.transform.scale_by(self.enemy_surf,1.5)
-        self.keyboard_layout = "AZERTY"
+        self.keyboard_layout = "QWERTY"
         self.joy = None
         self.running = True
         self.level = 0
